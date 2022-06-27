@@ -3,5 +3,6 @@
   "project_slug": "{{ cookiecutter.project_name.lower()|replace(' ', '_')|replace('-', '_')|replace('.', '_')|trim() }}",
   "author_name": "Masaaki Yasui",
   "email": "yasu@worgue.com",
-  "description": "Cloudformation template for website."
+  "description": "Cloudformation template for website.",
+  "use_nat_gateway": ["yes", "no"]
 }
