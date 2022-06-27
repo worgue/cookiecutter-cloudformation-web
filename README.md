@@ -1,0 +1,3 @@
+# cookiecutter-cloudformation-web
+ウェブサイトをAWSでホスティングする際のCloudformationテンプレートのテンプレートです。
+Cloudformationのテンプレートだけで変数や分岐を設定すると、大きくなりすぎて確認が大変なため、利用したい機能のみのCloudformationテンプレートを出力することを目的にしています。
