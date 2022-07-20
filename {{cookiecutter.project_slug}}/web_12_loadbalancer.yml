@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: loadbalancer configuration for webapp
+Parameters:
+  EnvironmentName:
+    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Type: String
+  {% if cookiecutter.use_certificate == 'yes' -%}
+  HostedZoneId:
+    Description: route53 hosted zone id
+    Type: AWS::Route53::HostedZone::Id
+  DomainName:
+    Description: A service domain.
+    Type: String
+  {%- endif %}
+
+
+Mappings:
+  ELBAccountID:
+    ap-northeast-1:
+      accountID: "582318560864"
+
+Resources:
+  LogBucket:
+    DeletionPolicy : Retain
+    UpdateReplacePolicy: Retain
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvironmentName}-lb-logs"
+      LifecycleConfiguration:
+        Rules:
+          - Id: GlacierRule
+            Status: Enabled
+            ExpirationInDays: 1825
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+
+  LogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LogBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - "s3:PutObject"
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${LogBucket}/AWSLogs/${AWS::AccountId}/*"
+            Principal:
+              AWS: !Sub
+                - "arn:aws:iam::${ELBAccountID}:root"
+                - ELBAccountID: !FindInMap
+                  - ELBAccountID
+                  - !Ref 'AWS::Region'
+                  - accountID
+          - Action:
+              - "s3:PutObject"
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${LogBucket}/AWSLogs/${AWS::AccountId}/*"
+            Principal:
+              Service: "delivery.logs.amazonaws.com"
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+          - Action:
+              - "s3:GetBucketAcl"
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::${LogBucket}"
+            Principal:
+              Service: "delivery.logs.amazonaws.com"
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${EnvironmentName}-balancer
+      LoadBalancerAttributes:
+        - Key: access_logs.s3.enabled
+          Value: true
+        - Key: access_logs.s3.bucket
+          Value: !Ref LogBucket
+      Subnets: !Split
+        - ","
+        - !ImportValue
+          "Fn::Sub": '${EnvironmentName}-PUBLIC-SUBNETS'
+      SecurityGroups:
+        - !ImportValue
+          "Fn::Sub": '${EnvironmentName}-LOADBALANCER-SECURITYGROUP'
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-web-balancer
+
+  HTTPlistener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - Type: "redirect"
+          RedirectConfig:
+            Protocol: "HTTPS"
+            Port: 443
+            Host: "#{host}"
+            Path: "/#{path}"
+            Query: "#{query}"
+            StatusCode: "HTTP_301"
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: "HTTP"
+
+  {% if cookiecutter.use_certificate == 'yes' -%}
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-cert
+      ValidationMethod: DNS
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt 'LoadBalancer.CanonicalHostedZoneID'
+        DNSName: !GetAtt 'LoadBalancer.DNSName'
+  {%- endif %}
+
+Outputs:
+  EnvironmentName:
+    Description: env
+    Value: !Ref EnvironmentName
+  LoadBalancer:
+    Description: A reference to the loadbalancer
+    Value: !Ref LoadBalancer
+    Export:
+      Name: !Sub ${EnvironmentName}-LOADBALANCER
+  LogBucket:
+    Value: !Ref LogBucket
+    Description: Name of the log s3 bucket
+  {% if cookiecutter.use_certificate == 'yes' -%}
+  Certificate:
+    Description: A reference to the ssl certificate
+    Value: !Ref Certificate
+    Export:
+      Name: !Sub ${EnvironmentName}-CERTIFICATE
+  DomainName:
+    Description: A domain name
+    Value: !Ref DomainName
+  {%- endif %}

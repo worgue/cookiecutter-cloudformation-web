@@ -1,0 +1,59 @@
+{% if cookiecutter.use_efs == 'yes' -%}
+AWSTemplateFormatVersion: '2010-09-09'
+Description: efs configuration for webapp
+Parameters:
+  EnvironmentName:
+    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Type: String
+
+Resources:
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      BackupPolicy:
+        Status: ENABLED
+      PerformanceMode: generalPurpose
+      Encrypted: true
+      LifecyclePolicies:
+        - TransitionToIA: AFTER_30_DAYS
+        - TransitionToPrimaryStorageClass: AFTER_1_ACCESS
+      FileSystemTags:
+      - Key: Name
+        Value: !Sub ${EnvironmentName}-storage
+  MountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS-1'
+      SecurityGroups:
+        - !ImportValue
+          "Fn::Sub": '${EnvironmentName}-EFS-SECURITYGROUP'
+  MountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS-2'
+      SecurityGroups:
+        - !ImportValue
+          "Fn::Sub": '${EnvironmentName}-EFS-SECURITYGROUP'
+
+Outputs:
+  MountTargetID1:
+    Description: Mount target ID 1
+    Value: !Ref MountTarget1
+  MountTargetID2:
+    Description: Mount target ID 2
+    Value: !Ref MountTarget2
+  FileSystemID:
+    Description: File system ID
+    Value: !Ref FileSystem
+    Export:
+      Name: !Sub ${EnvironmentName}-EFS-ID
+  MountCommand:
+    Description: how to mount efs using the NFS client
+    Value: !Sub
+      - sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EFSID}.efs.${AWS::Region}.amazonaws.com:/ efs
+      - EFSID: !Ref FileSystem
+{% endif %}

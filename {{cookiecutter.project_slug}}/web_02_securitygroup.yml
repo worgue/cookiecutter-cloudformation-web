@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: security group configuration for webapp
+Parameters:
+  EnvironmentName:
+    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Type: String
+    MinLength : 1
+    MaxLength : 255
+    AllowedPattern : "^[a-zA-Z][-a-zA-Z0-9]*$"
+
+Resources:
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${EnvironmentName} LoadBalancers
+      GroupName: !Sub ${EnvironmentName} balancer
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIpv6: ::/0
+          Description: from ::/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:80
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIpv6: ::/0
+          Description: from ::/0:80
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-balancer
+      VpcId: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-VPCID'
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${EnvironmentName} app
+      GroupName: !Sub ${EnvironmentName} app
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+          Description: 'allow http'
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-app
+      VpcId: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-VPCID'
+
+  {% if cookiecutter.use_rds -%}
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${EnvironmentName} rds postgresql
+      GroupName: !Sub ${EnvironmentName} rds
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref AppSecurityGroup
+          Description: from instance
+          FromPort: 5432
+          IpProtocol: tcp
+          ToPort: 5432
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-rds
+      VpcId: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-VPCID'
+  {%- endif %}
+
+  {% if cookiecutter.use_efs -%}
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${EnvironmentName} efs storage
+      GroupName: !Sub ${EnvironmentName} efs
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref AppSecurityGroup
+          Description: from instance
+          FromPort: 2049
+          IpProtocol: tcp
+          ToPort: 2049
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-efs
+      VpcId: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-VPCID'
+  {%- endif %}
+
+Outputs:
+  LoadBalancerSecurityGroup:
+    Description: A reference to the loadbalancer security group
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-LOADBALANCER-SECURITYGROUP
+
+  AppSecurityGroup:
+    Description: A reference to the app security group
+    Value: !Ref AppSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-APP-SECURITYGROUP
+
+  {% if cookiecutter.use_rds -%}
+  RDSSecurityGroup:
+    Description: A reference to the rds security group
+    Value: !Ref RDSSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-RDS-SECURITYGROUP
+  {%- endif %}
+
+  {% if cookiecutter.use_efs -%}
+  EFSSecurityGroup:
+    Description: A reference to the efs security group
+    Value: !Ref EFSSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-EFS-SECURITYGROUP
+  {%- endif %}

@@ -5,4 +5,3 @@ for (dirpath, dirnames, filenames) in os.walk('.'):
         path = os.path.join(dirpath, fname)
         if open(path).read().strip() == "":
             os.remove(path)
-            print('removed: %s' % path)

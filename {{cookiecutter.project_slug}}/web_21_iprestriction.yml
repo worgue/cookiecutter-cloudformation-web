@@ -1,0 +1,80 @@
+{% if cookiecutter.use_iprestriction == 'yes' -%}
+AWSTemplateFormatVersion: '2010-09-09'
+Description: loadbalancer configuration for webapp
+Parameters:
+  EnvironmentName:
+    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Type: String
+  BlockUrlPathRegex:
+    Description: IP address restriction is applied to this regex path.
+    Type: String
+    Default: ^/admin
+  AccessibleIPs:
+    Description: Comma separated IP networks which can access web service. e.g)127.0.0.1,127.0.0.0/30
+    Type: String
+    Default: 127.0.0.1/32
+
+Resources:
+  AccessibleIPSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Addresses: !Split [",", !Ref AccessibleIPs]
+      IPAddressVersion: IPV4
+      Name: accesible-ip-list
+      Scope: REGIONAL
+
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      DefaultAction:
+        Allow: {}
+      Name: !Sub ${EnvironmentName}-webacl
+      Scope: REGIONAL
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub ${EnvironmentName}-webacl
+      Rules:
+        - Name: block-privacy
+          Action:
+            Block: {}
+          Priority: 2
+          Statement:
+            RegexMatchStatement:
+              RegexString: !Ref BlockUrlPathRegex
+              FieldToMatch:
+                UriPath: {}
+              TextTransformations:
+                - Priority: 0
+                  Type: NONE
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: block-privacy
+            SampledRequestsEnabled: true
+        - Name: allow-privacy-by-ip
+          Action:
+            "Allow": {}
+          Priority: 1
+          Statement:
+            IPSetReferenceStatement:
+              Arn: !GetAtt 'AccessibleIPSet.Arn'
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: allow-privacy
+            SampledRequestsEnabled: true
+
+  WebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !ImportValue
+        "Fn::Sub": '${EnvironmentName}-LOADBALANCER'
+      WebACLArn: !GetAtt 'WebACL.Arn'
+
+Outputs:
+  WebACL:
+    Description: WebACL
+    Value: !Ref WebACL
+  AccessibleIPSet:
+    Description: AccessibleIPSet
+    Value: !Ref AccessibleIPSet
+{% endif %}

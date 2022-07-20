@@ -1,4 +1,4 @@
-{% if cookiecutter.use_nat_gateway == 'yes' -%}
+{% if cookiecutter.app_subnets == 'PRIVATE' -%}
 AWSTemplateFormatVersion: '2010-09-09'
 Description: ec2 configuration for webapp
 Parameters:

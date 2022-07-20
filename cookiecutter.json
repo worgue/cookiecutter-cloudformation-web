@@ -4,5 +4,11 @@
   "author_name": "Masaaki Yasui",
   "email": "yasu@worgue.com",
   "description": "Cloudformation template for website.",
-  "use_nat_gateway": ["yes", "no"]
+  "app_service": ["fargate", "ec2"],
+  "app_subnets": ["PRIVATE", "PUBLIC"],
+  "use_efs": ["yes", "no"],
+  "use_rds": ["yes", "no"],
+  "use_cache": ["yes", "no"],
+  "use_certificate": ["yes", "no"],
+  "use_iprestriction": ["yes", "no"]
 }
