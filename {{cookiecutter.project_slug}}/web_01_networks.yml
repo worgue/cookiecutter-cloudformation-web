@@ -73,7 +73,7 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  {% if cookiecutter.app_subnets == 'PUBLIC' -%}
+  # Required by nat gateway even if app_subnes == 'PUBLIC'
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -107,7 +107,6 @@ Resources:
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
-  {%- endif %}
 
   {% if cookiecutter.use_rds == 'yes' -%}
   DBSubnetGroup:
@@ -142,7 +141,6 @@ Outputs:
     Description: A reference to the availability zones
     Value: !Join [ ",", [ !Ref AZ1, !Ref AZ2 ]]
 
-  {% if cookiecutter.app_subnets == 'PUBLIC' -%}
   PublicSubnets:
     Description: A list of the public subnets
     Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
@@ -160,7 +158,6 @@ Outputs:
     Value: !Ref PublicSubnet2
     Export:
       Name: !Sub ${EnvironmentName}-PUBLIC-SUBNETS-2
-  {%- endif %}
 
   PrivateSubnets:
     Description: A list of the private subnets
