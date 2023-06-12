@@ -1,0 +1,256 @@
+{% if cookiecutter.app_service == "fargate" -%}
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ec2 configuration for webapp
+Parameters:
+  EnvironmentName:
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
+    Type: String
+  DeployVersion:
+    Description: A deploy version
+    Type: String
+    Default: latest
+  DjangoEnvPath:
+    Description: DJANGO_ENV_PATH e.g) myprj/env/env.default
+    Type: String
+  DatabaseUrlSecretArn:
+    Description: DATABASE_URL from secret manager arn e.g) arn:aws:secretsmanager:ap-northeast-1:`account-id`:secret:xxx-xxx-DATABASE_URL-xxxxx
+    Type: String
+  SecretKeySecretArn:
+    Description: SECRET_KEY from secreta manager arn e.g) arn:aws:secretsmanager:ap-northeast-1:`account-id`:secret:xxx-xxx-SECRET_KEY-xxxxx
+    Type: String
+  ServiceCount:
+    Description: ECSService DesiredCount
+    Type: Number
+    Default: 1
+  UnitRepoName:
+    Description: A nginx unit python docker repository name
+    Type: String
+  ContainerSubnet:
+    Description: Set instance on which subnet. If this is PUBLIC, ECS Service assign public ip to tasks.
+    Type: String
+    Default: {{ cookiecutter.app_subnets }}
+    AllowedValues:
+      - PRIVATE
+      {% if cookiecutter.app_subnets == "PUBLIC" -%}
+      - PUBLIC
+      {%- endif %}
+  ReadOnly:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+
+Conditions:
+  IsPublic: !Equals [!Ref ContainerSubnet, "PUBLIC"]
+
+Resources:
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonSESFullAccess
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+      RoleName: !Sub ${EnvironmentName}-ecs-task-role
+
+  ECSTaskExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Description: !Sub ${EnvironmentName} ecs task execution role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: !Sub "${EnvironmentName}-AWS-Secrets-Manager"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${EnvironmentName}-*"
+      RoleName: !Sub ${EnvironmentName}-ecs-task-execution-role
+
+  EcsExecRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: Ecs-exec-role
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - "ssm:UpdateInstanceInformation"
+              - "ssmmessages:CreateControlChannel"
+              - "ssmmessages:CreateDataChannel"
+              - "ssmmessages:OpenControlChannel"
+              - "ssmmessages:OpenDataChannel"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "s3:GetEncryptionConfiguration"
+            Resource: "*"
+      Roles:
+        - !Ref ECSTaskRole
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+        - "FARGATE"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      ContainerDefinitions:
+        - Name: !Sub "${UnitRepoName}"
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${UnitRepoName}:${DeployVersion}"
+          ReadonlyRootFilesystem: !Ref ReadOnly
+          MemoryReservation: 256
+          Memory: 512
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+          {% if cookiecutter.use_efs -%}
+          MountPoints:
+            - ContainerPath: /media/efs
+              SourceVolume: efs-mount-vol
+          {%- endif %}
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref UnitCloudWatchLogsGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Ref EnvironmentName
+          Environment:
+            - Name: DJANGO_ENV_PATH
+              Value: !Ref DjangoEnvPath
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Ref DatabaseUrlSecretArn
+            - Name: SECRET_KEY
+              ValueFrom: !Ref SecretKeySecretArn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      Volumes:
+        - Name: efs-mount-vol
+          EFSVolumeConfiguration:
+            FilesystemId: !ImportValue
+              "Fn::Sub": "${EnvironmentName}-EFS-ID"
+            TransitEncryption: ENABLED
+
+  UnitCloudWatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-unit"
+      RetentionInDays: 365
+
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: !Sub ${EnvironmentName}-ecscluster-web
+
+  FargateTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Name: !Sub ${EnvironmentName}-fargate-target
+      VpcId: !ImportValue
+        "Fn::Sub": "${EnvironmentName}-VPCID"
+      Protocol: HTTP
+      Port: 80
+      HealthCheckPath: /
+      TargetType: ip
+
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !ImportValue
+        "Fn::Sub": "${EnvironmentName}-LOADBALANCER"
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: {"Fn::ImportValue": !Sub "${EnvironmentName}-CERTIFICATE"}
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref FargateTargetGroup
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: HTTPSListener
+    Properties:
+      EnableExecuteCommand: true
+      LaunchType: FARGATE
+      Cluster:
+        Ref: "ECSCluster"
+      DesiredCount: !Ref ServiceCount
+      TaskDefinition:
+        Ref: "TaskDefinition"
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: !If [IsPublic, "ENABLED", "DISABLED"]
+          SecurityGroups:
+            - !ImportValue
+              "Fn::Sub": "${EnvironmentName}-APP-SECURITYGROUP"
+          Subnets: !Split
+            - ","
+            - !ImportValue
+              "Fn::Sub": "${EnvironmentName}-${ContainerSubnet}-SUBNETS"
+      LoadBalancers:
+        - ContainerName: !Sub "${UnitRepoName}"
+          ContainerPort: 80
+          TargetGroupArn:
+            Ref: FargateTargetGroup
+
+Outputs:
+  TaskDefinition:
+    Description: fargate task definition
+    Value: !Ref TaskDefinition
+  UnitCloudWatchLogsGroup:
+    Description: cloud watch logs group
+    Value: !Ref UnitCloudWatchLogsGroup
+  ECSCluster:
+    Description: ecs cluster
+    Value: !Ref ECSCluster
+  FargateTargetGroup:
+    Description: fargate target group
+    Value: !Ref FargateTargetGroup
+  HTTPSListener:
+    Description: httplistener
+    Value: !Ref HTTPSListener
+  ECSService:
+    Description: ecs service
+    Value: !Ref ECSService
+  DeployVersion:
+    Description: A deploy version
+    Value: !Ref DeployVersion
+  DjangoEnvPath:
+    Description: DJANGO_ENV_PATH
+    Value: !Ref DjangoEnvPath
+  DatabaseUrlSecretArn:
+    Description: DATABASE_URL from secreta manager arn
+    Value: !Ref DatabaseUrlSecretArn
+  ServiceCount:
+    Description: ECSService DesiredCount
+    Value: !Ref ServiceCount
+  ContainerSubnet:
+    Description: Container subnet. If PUBLIC, assign public ip to tasks.
+    Value: !Ref ContainerSubnet
+{% endif %}
