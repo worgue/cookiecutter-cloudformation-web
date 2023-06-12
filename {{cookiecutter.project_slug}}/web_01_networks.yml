@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: network configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
   AZ1:
     Description: Availability Zone 1
@@ -73,7 +73,7 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  # Required by nat gateway even if app_subnes == 'PUBLIC'
+  # Required by nat gateway even if app_subnes == "PUBLIC"
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -108,7 +108,7 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
 
-  {% if cookiecutter.use_rds == 'yes' -%}
+  {% if cookiecutter.use_rds == "yes" -%}
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -119,7 +119,7 @@ Resources:
         - !Ref PrivateSubnet2
   {%- endif %}
 
-  {% if cookiecutter.use_cache == 'yes' -%}
+  {% if cookiecutter.use_cache == "yes" -%}
   CacheSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
     Properties:
@@ -177,7 +177,7 @@ Outputs:
     Export:
       Name: !Sub ${EnvironmentName}-PRIVATE-SUBNETS-2
 
-  {% if cookiecutter.use_rds == 'yes' -%}
+  {% if cookiecutter.use_rds == "yes" -%}
   DBSubnetGroup:
     Description: A reference to the rds subnet group.
     Value: !Ref DBSubnetGroup
@@ -185,7 +185,7 @@ Outputs:
       Name: !Sub ${EnvironmentName}-DBSUBNETGROUP
   {%- endif %}
 
-  {% if cookiecutter.use_cache == 'yes' -%}
+  {% if cookiecutter.use_cache == "yes" -%}
   CacheSubnetGroup:
     Description: A reference to the elasticache subnet group.
     Value: !Ref CacheSubnetGroup

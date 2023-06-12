@@ -1,9 +1,9 @@
-{% if cookiecutter.use_iprestriction == 'yes' -%}
-AWSTemplateFormatVersion: '2010-09-09'
+{% if cookiecutter.use_iprestriction == "yes" -%}
+AWSTemplateFormatVersion: "2010-09-09"
 Description: loadbalancer configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
   BlockUrlPathRegex:
     Description: IP address restriction is applied to this regex path.
@@ -57,7 +57,7 @@ Resources:
           Priority: 1
           Statement:
             IPSetReferenceStatement:
-              Arn: !GetAtt 'AccessibleIPSet.Arn'
+              Arn: !GetAtt "AccessibleIPSet.Arn"
           VisibilityConfig:
             CloudWatchMetricsEnabled: true
             MetricName: allow-privacy
@@ -67,8 +67,8 @@ Resources:
     Type: AWS::WAFv2::WebACLAssociation
     Properties:
       ResourceArn: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-LOADBALANCER'
-      WebACLArn: !GetAtt 'WebACL.Arn'
+        "Fn::Sub": "${EnvironmentName}-LOADBALANCER"
+      WebACLArn: !GetAtt "WebACL.Arn"
 
 Outputs:
   WebACL:

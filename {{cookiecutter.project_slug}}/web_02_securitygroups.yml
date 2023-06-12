@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: security group configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
     MinLength : 1
     MaxLength : 255
@@ -43,7 +43,7 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName}-balancer
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
 
   AppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -56,7 +56,7 @@ Resources:
           IpProtocol: "-1"
       SecurityGroupIngress:
         - SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-          Description: 'allow http'
+          Description: "allow http"
           FromPort: 80
           IpProtocol: tcp
           ToPort: 80
@@ -64,7 +64,7 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName}-app
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
 
   {% if cookiecutter.use_rds -%}
   RDSSecurityGroup:
@@ -86,7 +86,7 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName}-rds
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
   {%- endif %}
 
   {% if cookiecutter.use_efs -%}
@@ -109,7 +109,7 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName}-efs
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
   {%- endif %}
 
 Outputs:

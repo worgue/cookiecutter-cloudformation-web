@@ -1,9 +1,9 @@
-{% if cookiecutter.app_service == 'ec2' -%}
-AWSTemplateFormatVersion: '2010-09-09'
+{% if cookiecutter.app_service == "ec2" -%}
+AWSTemplateFormatVersion: "2010-09-09"
 Description: ec2 configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
   OS:
     Type: String
@@ -40,7 +40,7 @@ Parameters:
     Default: {{ cookiecutter.app_subnets }}
     AllowedValues:
       - PRIVATE
-      {% if cookiecutter.app_subnets == 'PUBLIC' -%}
+      {% if cookiecutter.app_subnets == "PUBLIC" -%}
       - PUBLIC
       {%- endif %}
 
@@ -57,11 +57,11 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !ImportValue
-          "Fn::Sub": '${EnvironmentName}-LOADBALANCER'
+          "Fn::Sub": "${EnvironmentName}-LOADBALANCER"
       Port: 443
       Protocol: HTTPS
       Certificates:
-        - CertificateArn: {'Fn::ImportValue': !Sub '${EnvironmentName}-CERTIFICATE'}
+        - CertificateArn: {"Fn::ImportValue": !Sub "${EnvironmentName}-CERTIFICATE"}
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref InstanceTargetGroup
@@ -71,7 +71,7 @@ Resources:
     Properties:
       Name: !Sub ${EnvironmentName}-web-target
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       Port: 80
       Protocol: HTTP
       Targets:
@@ -92,19 +92,19 @@ Resources:
     Properties:
       ImageId: !FindInMap
         - OS2Image
-        - !Ref 'AWS::Region'
+        - !Ref "AWS::Region"
         - !Ref OS
       KeyName: !Ref KeyName
       InstanceType: !Ref InstanceType
       SecurityGroupIds:
         - !ImportValue
-          "Fn::Sub": '${EnvironmentName}-APP-SECURITYGROUP'
+          "Fn::Sub": "${EnvironmentName}-APP-SECURITYGROUP"
       SubnetId: !Select
         - 0
         - !Split
           - ","
           - !ImportValue
-            "Fn::Sub": '${EnvironmentName}-${InstanceSubnet}-SUBNETS'
+            "Fn::Sub": "${EnvironmentName}-${InstanceSubnet}-SUBNETS"
       IamInstanceProfile: !Ref EC2InstanceProfile
       Monitoring: true
       Tags:
@@ -126,7 +126,7 @@ Resources:
               Service:
                 - ec2.amazonaws.com
             Action:
-              - 'sts:AssumeRole'
+              - "sts:AssumeRole"
       Description: !Sub ${EnvironmentName} ec2 web application iam role
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
@@ -137,7 +137,7 @@ Resources:
       RoleName: !Sub ${EnvironmentName}-ec2-role
 
   EC2InstanceProfile:
-    Type: 'AWS::IAM::InstanceProfile'
+    Type: "AWS::IAM::InstanceProfile"
     Properties:
       Roles:
         - !Ref EC2Role
@@ -146,7 +146,7 @@ Resources:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       GroupName: !Sub "${EnvironmentName}-ssm-endpoint-sg"
       GroupDescription: !Sub "${EnvironmentName}-ssm-endpoint-sg"
 
@@ -166,11 +166,11 @@ Resources:
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       SubnetIds: !Split
         - ","
         - !ImportValue
-          "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS'
+          "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS"
       SecurityGroupIds:
         - !Ref SSMEndpointSG
 
@@ -181,11 +181,11 @@ Resources:
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       SubnetIds: !Split
         - ","
         - !ImportValue
-          "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS'
+          "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS"
       SecurityGroupIds:
         - !Ref SSMEndpointSG
 
@@ -196,11 +196,11 @@ Resources:
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       SubnetIds: !Split
         - ","
         - !ImportValue
-          "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS'
+          "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS"
       SecurityGroupIds:
         - !Ref SSMEndpointSG
 

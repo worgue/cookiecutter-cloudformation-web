@@ -1,9 +1,9 @@
-{% if cookiecutter.use_efs == 'yes' -%}
-AWSTemplateFormatVersion: '2010-09-09'
+{% if cookiecutter.use_efs == "yes" -%}
+AWSTemplateFormatVersion: "2010-09-09"
 Description: efs configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
 
 Resources:
@@ -25,19 +25,19 @@ Resources:
     Properties:
       FileSystemId: !Ref FileSystem
       SubnetId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS-1'
+        "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS-1"
       SecurityGroups:
         - !ImportValue
-          "Fn::Sub": '${EnvironmentName}-EFS-SECURITYGROUP'
+          "Fn::Sub": "${EnvironmentName}-EFS-SECURITYGROUP"
   MountTarget2:
     Type: AWS::EFS::MountTarget
     Properties:
       FileSystemId: !Ref FileSystem
       SubnetId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS-2'
+        "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS-2"
       SecurityGroups:
         - !ImportValue
-          "Fn::Sub": '${EnvironmentName}-EFS-SECURITYGROUP'
+          "Fn::Sub": "${EnvironmentName}-EFS-SECURITYGROUP"
 
 Outputs:
   MountTargetID1:

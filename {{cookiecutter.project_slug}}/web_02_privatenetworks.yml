@@ -1,9 +1,9 @@
-{% if cookiecutter.app_subnets == 'PRIVATE' -%}
-AWSTemplateFormatVersion: '2010-09-09'
+{% if cookiecutter.app_subnets == "PRIVATE" -%}
+AWSTemplateFormatVersion: "2010-09-09"
 Description: ec2 configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
 
 
@@ -21,7 +21,7 @@ Resources:
     Properties:
       AllocationId: !GetAtt EIPNATGateway1.AllocationId
       SubnetId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-PUBLIC-SUBNETS-1'
+        "Fn::Sub": "${EnvironmentName}-PUBLIC-SUBNETS-1"
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} NAT Gateway 1
@@ -30,7 +30,7 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Routes 1
@@ -48,7 +48,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS-1'
+        "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS-1"
 
   EIPNATGateway2:
     Type: "AWS::EC2::EIP"
@@ -63,7 +63,7 @@ Resources:
     Properties:
       AllocationId: !GetAtt EIPNATGateway2.AllocationId
       SubnetId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-PUBLIC-SUBNETS-2'
+        "Fn::Sub": "${EnvironmentName}-PUBLIC-SUBNETS-2"
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} NAT Gateway 2
@@ -72,7 +72,7 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Routes 2
@@ -90,7 +90,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-PRIVATE-SUBNETS-2'
+        "Fn::Sub": "${EnvironmentName}-PRIVATE-SUBNETS-2"
 
   S3GatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -98,7 +98,7 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Gateway
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       RouteTableIds:
         - !Ref PrivateRouteTable1
         - !Ref PrivateRouteTable2

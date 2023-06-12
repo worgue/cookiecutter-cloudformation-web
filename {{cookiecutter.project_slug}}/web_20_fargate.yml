@@ -1,9 +1,9 @@
-{% if cookiecutter.app_service == 'fargate' -%}
-AWSTemplateFormatVersion: '2010-09-09'
+{% if cookiecutter.app_service == "fargate" -%}
+AWSTemplateFormatVersion: "2010-09-09"
 Description: ec2 configuration for webapp
 Parameters:
   EnvironmentName:
-    Description: An environment name like 'dev-myprj' that is prefixed to resource names.
+    Description: An environment name like "dev-myprj" that is prefixed to resource names.
     Type: String
   DeployVersion:
     Description: A deploy version
@@ -38,7 +38,7 @@ Parameters:
     Default: {{ cookiecutter.app_subnets }}
     AllowedValues:
       - PRIVATE
-      {% if cookiecutter.app_subnets == 'PUBLIC' -%}
+      {% if cookiecutter.app_subnets == "PUBLIC" -%}
       - PUBLIC
       {%- endif %}
   ReadOnly:
@@ -49,7 +49,7 @@ Parameters:
       - false
 
 Conditions:
-  IsPublic: !Equals [!Ref ContainerSubnet, 'PUBLIC']
+  IsPublic: !Equals [!Ref ContainerSubnet, "PUBLIC"]
 
 Resources:
   ECSTaskRole:
@@ -60,7 +60,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: "sts:AssumeRole"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonSESFullAccess
@@ -68,17 +68,17 @@ Resources:
       RoleName: !Sub ${EnvironmentName}-ecs-task-role
 
   ECSTaskExecutionRole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service:
                 - ecs-tasks.amazonaws.com
             Action:
-              - 'sts:AssumeRole'
+              - "sts:AssumeRole"
       Description: !Sub ${EnvironmentName} ecs task execution role
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
@@ -180,32 +180,32 @@ Resources:
         - Name: efs-mount-vol
           EFSVolumeConfiguration:
             FilesystemId: !ImportValue
-              "Fn::Sub": '${EnvironmentName}-EFS-ID'
+              "Fn::Sub": "${EnvironmentName}-EFS-ID"
             TransitEncryption: ENABLED
 
   NginxCloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '${AWS::StackName}-nginx'
+      LogGroupName: !Sub "${AWS::StackName}-nginx"
       RetentionInDays: 365
 
   DjangoCloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '${AWS::StackName}-django'
+      LogGroupName: !Sub "${AWS::StackName}-django"
       RetentionInDays: 365
 
   ECSCluster:
-    Type: 'AWS::ECS::Cluster'
+    Type: "AWS::ECS::Cluster"
     Properties:
       ClusterName: !Sub ${EnvironmentName}-ecscluster-web
 
   FargateTargetGroup:
-    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties:
       Name: !Sub ${EnvironmentName}-fargate-target
       VpcId: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-VPCID'
+        "Fn::Sub": "${EnvironmentName}-VPCID"
       Protocol: HTTP
       Port: 80
       HealthCheckPath: /
@@ -215,11 +215,11 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !ImportValue
-        "Fn::Sub": '${EnvironmentName}-LOADBALANCER'
+        "Fn::Sub": "${EnvironmentName}-LOADBALANCER"
       Port: 443
       Protocol: HTTPS
       Certificates:
-        - CertificateArn: {'Fn::ImportValue': !Sub '${EnvironmentName}-CERTIFICATE'}
+        - CertificateArn: {"Fn::ImportValue": !Sub "${EnvironmentName}-CERTIFICATE"}
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref FargateTargetGroup
@@ -240,14 +240,14 @@ Resources:
         MinimumHealthyPercent: 0
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: !If [IsPublic, 'ENABLED', 'DISABLED']
+          AssignPublicIp: !If [IsPublic, "ENABLED", "DISABLED"]
           SecurityGroups:
             - !ImportValue
-              "Fn::Sub": '${EnvironmentName}-APP-SECURITYGROUP'
+              "Fn::Sub": "${EnvironmentName}-APP-SECURITYGROUP"
           Subnets: !Split
             - ","
             - !ImportValue
-              "Fn::Sub": '${EnvironmentName}-${ContainerSubnet}-SUBNETS'
+              "Fn::Sub": "${EnvironmentName}-${ContainerSubnet}-SUBNETS"
       LoadBalancers:
         - ContainerName: !Sub "${NginxRepoName}"
           ContainerPort: 80
